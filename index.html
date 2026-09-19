@@ -33,6 +33,9 @@
     window.firebaseDb = firebaseDb;
     window.siteDataDocRef = siteDataDocRef;
     window.firebaseGetDoc = getDoc;
+    window.firebaseSetDoc = setDoc;
+    window.firebaseOnSnapshot = onSnapshot;
+    window.dispatchEvent(new Event('firebase-ready'));
   </script>
   <script type="text/javascript">
     (function () {
@@ -1340,7 +1343,7 @@
 
     isRemoteSyncInProgress = true;
     try {
-      await setDoc(siteRef, {
+      await window.firebaseSetDoc(siteRef, {
         ...appData,
         updatedAt: new Date().toISOString()
       }, { merge: true });
@@ -1394,7 +1397,7 @@
       return;
     }
 
-    onSnapshot(siteRef, (snapshot) => {
+    window.firebaseOnSnapshot(siteRef, (snapshot) => {
       if (!snapshot.exists()) {
         console.log('Firestore dokümanı yok; ilk kez oluşturuluyor.');
         saveAppDataToFirestore();
@@ -2106,8 +2109,16 @@
   document.getElementById('importDataInput').addEventListener('change', importAppDataFromJson);
 
   ensureAdminPassword();
-  loadRemoteAppData();
-  subscribeToFirestoreData();
+  function startRemoteDataSync() {
+    loadRemoteAppData();
+    subscribeToFirestoreData();
+  }
+
+  if (window.siteDataDocRef) {
+    startRemoteDataSync();
+  } else {
+    window.addEventListener('firebase-ready', startRemoteDataSync, { once: true });
+  }
   renderPageData();
   renderMenu();
   renderAdminPanel();
