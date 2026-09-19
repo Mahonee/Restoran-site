@@ -1333,7 +1333,10 @@
 
   async function saveAppDataToFirestore() {
     const siteRef = window.siteDataDocRef;
-    if (!siteRef) return;
+    if (!siteRef) {
+      console.warn('Firebase Firestore başlatılmadı. siteDataDocRef bulunamadı.');
+      return false;
+    }
 
     isRemoteSyncInProgress = true;
     try {
@@ -1341,8 +1344,11 @@
         ...appData,
         updatedAt: new Date().toISOString()
       }, { merge: true });
+      console.log('Firestore yazma başarılı:', appData.menuItems.length, 'menü öğesi');
+      return true;
     } catch (error) {
       console.error('Firestore veri yazma hatası:', error);
+      return false;
     } finally {
       isRemoteSyncInProgress = false;
     }
@@ -1378,15 +1384,22 @@
 
   function subscribeToFirestoreData() {
     const siteRef = window.siteDataDocRef;
-    if (!siteRef) return;
+    if (!siteRef) {
+      console.warn('Firestore listener başlatılamadı: siteRef yok.');
+      return;
+    }
 
     onSnapshot(siteRef, (snapshot) => {
-      if (!snapshot.exists()) return;
+      if (!snapshot.exists()) {
+        console.log('Firestore dokümanı yok; ilk kez oluşturuluyor.');
+        saveAppDataToFirestore();
+        return;
+      }
+
       const remoteData = snapshot.data();
       const nextData = normalizeAppData(remoteData);
 
       if (JSON.stringify(nextData) === JSON.stringify(appData)) return;
-
       if (isRemoteSyncInProgress) return;
 
       appData = nextData;
@@ -1394,6 +1407,7 @@
       renderPageData();
       renderMenu();
       renderAdminPanel();
+      console.log('Firestore anlık güncelleme alındı.');
     }, (error) => {
       console.error('Firestore real-time listener hatası:', error);
     });
